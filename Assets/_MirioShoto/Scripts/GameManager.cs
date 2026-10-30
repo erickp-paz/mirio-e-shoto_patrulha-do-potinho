@@ -17,7 +17,9 @@ namespace MirioShoto
     public class GameManager : MonoBehaviour
     {
         public static GameManager I;
-        public enum State { Playing, LevelUp, Paused, GameOver, Victory }
+        public static string Selected = "Mirio"; public static bool selectDone; // personagem escolhido / tela de seleção já passou
+        int selIdx; static readonly string[] Names = { "Mirio", "Shoto" };
+        public enum State { Select, Playing, LevelUp, Paused, GameOver, Victory }
 
         // ===== Balanceamento =====
         public const float RoomW = 22f, RoomD = 14f;     // largura (X) e profundidade (Z) da sala
@@ -44,10 +46,13 @@ namespace MirioShoto
             Feedback.numbers.Clear(); Feedback.shake = 0; Feedback.hitstop = 0;
             BuildRoom();
             bowl = new GameObject("PoteDeRacao").AddComponent<FoodBowl>();
-            cat = new GameObject("Mirio").AddComponent<Cat>();
+            cat = new GameObject(Selected).AddComponent<Cat>(); cat.catName = Selected;
             cat.transform.position = new Vector3(0, 0, -1.8f);
             cat.weapons.Add(new Patada());
             SetupCameraAndLight();
+            selIdx = Selected == "Shoto" ? 1 : 0;
+            state = selectDone ? State.Playing : State.Select;
+            Time.timeScale = state == State.Select ? 0 : 1;
         }
 
         void OnDestroy() { if (I == this) I = null; Time.timeScale = 1; }
@@ -275,8 +280,39 @@ namespace MirioShoto
 
         void Victory()
         {
-            endMessage = "O sol nasceu! A ração está salva e Mirio dormiu dentro do pote.";
+            endMessage = $"O sol nasceu! A ração está salva e {cat.catName} dormiu dentro do pote.";
             state = State.Victory; Time.timeScale = 0;
+        }
+
+        void ConfirmSelect()
+        {
+            Selected = Names[selIdx]; selectDone = true;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        static string StatsText(string n) => n == "Mirio"
+            ? "Forte e resistente\nVida 140 · Dano +20%\nVelocidade média-baixa\nCrítico 5% (x1,5)"
+            : "Ágil e letal\nVida 85 · Dano -5%\nVelocidade alta\nCrítico 22% (x2,2)";
+
+        void DrawSelect(float s)
+        {
+            Dim();
+            GUI.Label(new Rect(0, Screen.height * .08f, Screen.width, 60 * s), "Escolha seu gato", sBig);
+            float w = 300 * s, h = 380 * s, gap = 40 * s, x0 = Screen.width / 2 - (w * Names.Length + gap * (Names.Length - 1)) / 2, y = Screen.height * .2f;
+            for (int i = 0; i < Names.Length; i++)
+            {
+                var rc = new Rect(x0 + i * (w + gap), y, w, h);
+                bool sel = i == selIdx;
+                var c = GUI.color; GUI.color = sel ? new Color(1, .85f, .3f, .9f) : new Color(1, 1, 1, .25f);
+                GUI.DrawTexture(rc, Texture2D.whiteTexture); GUI.color = new Color(.08f, .08f, .12f, .95f);
+                GUI.DrawTexture(new Rect(rc.x + 4 * s, rc.y + 4 * s, rc.width - 8 * s, rc.height - 8 * s), Texture2D.whiteTexture); GUI.color = c;
+                var tex = Resources.Load<Texture2D>($"Cats/{Names[i]}/front_idle");
+                if (tex != null) GUI.DrawTexture(new Rect(rc.x + 20 * s, rc.y + 16 * s, rc.width - 40 * s, 180 * s), tex, ScaleMode.ScaleToFit);
+                GUI.Label(new Rect(rc.x, rc.y + 196 * s, rc.width, 40 * s), Names[i], sBig);
+                GUI.Label(new Rect(rc.x + 10 * s, rc.y + 244 * s, rc.width - 20 * s, 130 * s), StatsText(Names[i]), sSmall);
+                if (GUI.Button(rc, GUIContent.none, GUIStyle.none)) { if (selIdx == i) ConfirmSelect(); else selIdx = i; }
+            }
+            GUI.Label(new Rect(0, Screen.height * .88f, Screen.width, 40 * s), "← → trocam · Enter / Espaço / A confirma · clique duplo também", sSmall);
         }
 
         void HandleInput()
@@ -286,6 +322,17 @@ namespace MirioShoto
             {
                 if (state == State.Playing) { state = State.Paused; Time.timeScale = 0; }
                 else if (state == State.Paused) { state = State.Playing; Time.timeScale = 1; }
+            }
+            if (kb != null && kb.tabKey.wasPressedThisFrame && (state == State.Playing || state == State.Paused))
+            { selectDone = false; SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex); return; }
+            if (state == State.Select)
+            {
+                bool l = (kb != null && (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame)) || (gp != null && gp.dpad.left.wasPressedThisFrame);
+                bool r = (kb != null && (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame)) || (gp != null && gp.dpad.right.wasPressedThisFrame);
+                if (l) selIdx = (selIdx + Names.Length - 1) % Names.Length;
+                if (r) selIdx = (selIdx + 1) % Names.Length;
+                if ((kb != null && (kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame)) || (gp != null && gp.buttonSouth.wasPressedThisFrame)) ConfirmSelect();
+                return;
             }
             if (state == State.LevelUp && kb != null)
             {
@@ -367,7 +414,8 @@ namespace MirioShoto
             if (boss != null)
                 Bar(new Rect(Screen.width / 2 - 250 * s, 48 * s, 500 * s, 16 * s), boss.hp / boss.st.hp, new Color(.6f, .2f, .15f), "Besouro-Rinoceronte");
 
-            if (state == State.LevelUp && offer != null)
+            if (state == State.Select) DrawSelect(s);
+            else if (state == State.LevelUp && offer != null)
             {
                 Dim();
                 GUI.Label(new Rect(0, Screen.height * .18f, Screen.width, 50 * s), $"Nível {level}! Escolha uma melhoria (1, 2 ou 3)", sBig);
@@ -376,7 +424,7 @@ namespace MirioShoto
                 for (int i = 0; i < opcoes.Count; i++)
                     if (GUI.Button(new Rect(x0 + i * (w + gap), Screen.height * .32f, w, h), $"[{i + 1}]  {opcoes[i].title}\n\n{opcoes[i].desc}", sBtn)) { Choose(i); break; }
             }
-            else if (state == State.Paused) { Dim(); GUI.Label(new Rect(0, Screen.height * .4f, Screen.width, 60 * s), "Pausado — Esc para voltar", sBig); }
+            else if (state == State.Paused) { Dim(); GUI.Label(new Rect(0, Screen.height * .4f, Screen.width, 60 * s), "Pausado — Esc volta · Tab troca de gato", sBig); }
             else if (state == State.GameOver || state == State.Victory)
             {
                 Dim();

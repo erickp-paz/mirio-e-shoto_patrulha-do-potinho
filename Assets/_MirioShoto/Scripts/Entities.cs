@@ -15,19 +15,40 @@ namespace MirioShoto
     {
         public string catName = "Mirio";
         public float maxHp = 100, hp = 100, speed = 5f, pickupRadius = 1.8f;
-        public float damageMult = 1f, cooldownMult = 1f;
+        public float damageMult = 1f, cooldownMult = 1f, critChance = .05f, critMult = 1.5f;
         public Vector3 facing = Vector3.forward;
         public readonly List<Weapon> weapons = new();
         public const float Radius = .35f;
         public float lastHurt = -10;
 
         Transform model; List<Renderer> rends; readonly List<Color> baseColors = new();
+        CatSprite catSprite; SpriteRenderer spriteR; // gato em pixel art (se os sprites existirem)
         Vector3 vel; float invuln, flash, animT;
 
         void Awake()
         {
-            model = Art.BuildCat(transform, new Color(1f, .6f, .22f), new Color(.85f, .42f, .1f), new Color(.15f, .4f, .2f), out rends);
-            foreach (var r in rends) baseColors.Add(r.material.GetColor("_BaseColor"));
+            if (GameManager.I != null) catName = GameManager.Selected;
+            if (catName == "Shoto") { maxHp = hp = 85; speed = 6.3f; damageMult = .95f; critChance = .22f; critMult = 2.2f; }
+            else { maxHp = hp = 140; speed = 4.7f; damageMult = 1.2f; critChance = .05f; critMult = 1.5f; }
+            if (CatSprite.Available(catName))
+            {
+                var go = new GameObject("Sprite"); go.transform.SetParent(transform, false);
+                catSprite = go.AddComponent<CatSprite>(); catSprite.Init(catName);
+                model = go.transform; spriteR = catSprite.sr; rends = new List<Renderer>();
+            }
+            else
+            {
+                model = Art.BuildCat(transform, new Color(1f, .6f, .22f), new Color(.85f, .42f, .1f), new Color(.15f, .4f, .2f), out rends);
+                foreach (var r in rends) baseColors.Add(r.material.GetColor("_BaseColor"));
+            }
+        }
+
+        /// <summary>Multiplicador de dano de um ataque, com chance de crítico.</summary>
+        public float RollDmg()
+        {
+            if (Random.value >= critChance) return damageMult;
+            Feedback.Text(transform.position + Vector3.up * 1.4f, "CRÍTICO!", new Color(1f, .85f, .2f), 1.1f, .7f);
+            return damageMult * critMult;
         }
 
         void Update()
@@ -64,13 +85,27 @@ namespace MirioShoto
             animT += dt * Mathf.Lerp(4f, 16f, moving);
             float bob = Mathf.Abs(Mathf.Sin(animT)) * .07f * moving;
             float squash = 1 + Mathf.Sin(animT * 2) * .05f * moving;
-            model.localPosition = new Vector3(0, bob, 0);
-            model.localScale = new Vector3(1 / squash, squash, 1);
+            if (catSprite != null)
+            {
+                // sprite 2D: a animação de passos já vem dos quadros, então só um quique leve
+                model.localPosition = new Vector3(0, bob * .4f, 0);
+                catSprite.Tick(vel, moving, dt);
+            }
+            else
+            {
+                model.localPosition = new Vector3(0, bob, 0);
+                model.localScale = new Vector3(1 / squash, squash, 1);
+            }
 
             foreach (var w in weapons) w.Tick(this, dt);
 
             if (invuln > 0) invuln -= dt;
             if (flash > 0) flash -= dt;
+            if (spriteR != null)
+            {
+                spriteR.color = flash > 0 ? Color.Lerp(Color.white, new Color(1f, .3f, .3f), flash / .15f) : Color.white;
+                spriteR.enabled = invuln <= 0 || Mathf.Sin(Time.time * 50) > -.3f;
+            }
             for (int i = 0; i < rends.Count; i++)
             {
                 var c = flash > 0 ? Color.Lerp(baseColors[i], new Color(1, .2f, .2f), flash / .15f) : baseColors[i];

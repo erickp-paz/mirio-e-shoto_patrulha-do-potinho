@@ -56,7 +56,7 @@ namespace MirioShoto
             var t = Nearest(cat.transform.position, 1.8f + .1f * level);
             if (t == null) { timer = .08f; return; }
             Vector3 p = t.transform.position;
-            Area(p, .7f + .08f * level, Dmg * cat.damageMult, .8f);
+            Area(p, .7f + .08f * level, Dmg * cat.RollDmg(), .8f);
             Feedback.Ring(p, new Color(1f, .95f, .8f), .2f, .8f, .12f);
         }
     }
@@ -73,7 +73,7 @@ namespace MirioShoto
             var t = Nearest(p, 10f);
             Vector3 dir = t != null ? Flat.XZ(t.transform.position - p).normalized : cat.facing;
             for (int i = 0; i < Count; i++)
-                Projectile.Fire(p, Quaternion.Euler(0, (i - (Count - 1) / 2f) * 15f, 0) * dir, 10f, (5 + 2f * level) * cat.damageMult, 1 + level / 2);
+                Projectile.Fire(p, Quaternion.Euler(0, (i - (Count - 1) / 2f) * 15f, 0) * dir, 10f, (5 + 2f * level) * cat.RollDmg(), 1 + level / 2);
         }
     }
 
@@ -124,7 +124,7 @@ namespace MirioShoto
                 dots[i].position = cat.transform.position + new Vector3(Mathf.Cos(a) * r, .08f, Mathf.Sin(a) * r);
             }
             if (!Ready(cat, dt, .5f)) return;
-            Area(cat.transform.position, R, (1 + .7f * level) * cat.damageMult, .15f);
+            Area(cat.transform.position, R, (1 + .7f * level) * cat.RollDmg(), .15f);
         }
     }
 
@@ -139,7 +139,7 @@ namespace MirioShoto
             if (list.Count == 0) { timer = .3f; return; }
             int n = level >= 4 ? 2 : 1;
             for (int i = 0; i < n; i++)
-                FallingCup.Drop(list[Random.Range(0, list.Count)].transform.position, 1.3f + .15f * level, (10 + 4 * level) * cat.damageMult);
+                FallingCup.Drop(list[Random.Range(0, list.Count)].transform.position, 1.3f + .15f * level, (10 + 4 * level) * cat.RollDmg());
         }
     }
 
@@ -187,7 +187,7 @@ namespace MirioShoto
             if (!Ready(cat, dt, 6f - .6f * level)) return;
             float R = 2.4f + .3f * level;
             Vector3 p = cat.transform.position;
-            Area(p, R, (2 + level) * cat.damageMult, 2.2f, .7f);
+            Area(p, R, (2 + level) * cat.RollDmg(), 2.2f, .7f);
             Feedback.Ring(p, new Color(1f, 1f, .55f), .4f, R, .3f);
             Feedback.Text(p, "MIAU!", new Color(1f, 1f, .6f), 1.6f, .6f);
             Feedback.Shake(.08f);
