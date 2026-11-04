@@ -9,9 +9,13 @@ namespace MirioShoto.EditorTools
     /// </summary>
     public class CatTextureImporter : AssetPostprocessor
     {
+        public override uint GetVersion() => 3;   // sobe quando as regras mudam, para reimportar tudo
+
         void OnPreprocessTexture()
         {
-            if (!assetPath.Replace('\\', '/').Contains("Resources/Cats/")) return;
+            string ap = assetPath.Replace('\\', '/');
+            bool cat = ap.Contains("Resources/Cats/");
+            if (!cat && !ap.Contains("Resources/Insects/") && !ap.Contains("Resources/Plush/") && !ap.Contains("Resources/Items/")) return;
             var t = (TextureImporter)assetImporter;
             t.textureType = TextureImporterType.Default;
             t.alphaIsTransparency = true;
@@ -19,7 +23,7 @@ namespace MirioShoto.EditorTools
             t.filterMode = FilterMode.Point;
             t.textureCompression = TextureImporterCompression.Uncompressed;
             t.npotScale = TextureImporterNPOTScale.None;
-            t.isReadable = false;
+            t.isReadable = cat;   // gatos precisam ser legíveis para medir o tamanho do desenho
         }
     }
 }

@@ -202,19 +202,24 @@ namespace MirioShoto
         }
     }
 
-    /// <summary>Barricada de almofada: bloqueia insetos até ser roída.</summary>
+    /// <summary>Barricada de pelúcia (bicho sorteado a cada partida): bloqueia insetos até ser roída.</summary>
     public class Barricade : MonoBehaviour
     {
         public float maxHp = 60, hp = 60, radius = .8f;
-        Renderer r; Color baseC = new(.75f, .35f, .55f); float flash;
+        Renderer r; SpriteRenderer spr; Color baseC = new(.75f, .35f, .55f); float flash;
+        static readonly string[] Plushes = { "urso", "coelho", "dino", "pinguim", "polvo", "pato" };
+        static int plushSeed = -1;
+        public static void NewRun() { plushSeed = -1; }
 
         public static Barricade Place(Vector3 pos, float hp, float radius)
         {
             var go = new GameObject("Barricada");
             go.transform.position = Flat.XZ(pos);
             var b = go.AddComponent<Barricade>(); b.maxHp = b.hp = hp; b.radius = radius;
-            var cube = Art.Prim(PrimitiveType.Cube, go.transform, new Vector3(0, .25f, 0), new Vector3(radius * 1.8f, .5f, radius * 1.1f), b.baseC, new Vector3(0, Random.Range(0, 360), 0), true);
-            b.r = cube.GetComponent<Renderer>();
+            if (plushSeed < 0) plushSeed = Random.Range(0, Plushes.Length);   // um bicho diferente por partida (e por barricada, em ciclo)
+            var sa = SpriteActor.Create(go.transform, "Plush/pelucia_" + Plushes[(plushSeed + GameManager.I.barricades.Count) % Plushes.Length], radius * 1.5f);
+            if (sa != null) b.spr = sa.sr;
+            else { var cube = Art.Prim(PrimitiveType.Cube, go.transform, new Vector3(0, .25f, 0), new Vector3(radius * 1.8f, .5f, radius * 1.1f), b.baseC, new Vector3(0, Random.Range(0, 360), 0), true); b.r = cube.GetComponent<Renderer>(); }
             GameManager.I.barricades.Add(b);
             Feedback.Burst(go.transform.position + Vector3.up * .4f, new Color(1f, .9f, .95f), 8, 2.5f, .07f);
             return b;
@@ -223,6 +228,7 @@ namespace MirioShoto
         void Update()
         {
             if (flash > 0) flash -= Time.deltaTime;
+            if (spr != null) { float k = Mathf.Lerp(.55f, 1f, hp / maxHp); spr.color = Color.Lerp(new Color(k, k, k, 1), new Color(1f, .4f, .4f), Mathf.Clamp01(flash / .1f)); return; }
             r.material.SetColor("_BaseColor", Color.Lerp(baseC * Mathf.Lerp(.5f, 1f, hp / maxHp), Color.white, flash / .1f));
         }
 

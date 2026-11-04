@@ -42,7 +42,7 @@ namespace MirioShoto
 
         void Awake()
         {
-            I = this; Time.timeScale = 1;
+            I = this; Time.timeScale = 1; Barricade.NewRun();
             Feedback.numbers.Clear(); Feedback.shake = 0; Feedback.hitstop = 0;
             BuildRoom();
             bowl = new GameObject("PoteDeRacao").AddComponent<FoodBowl>();
@@ -110,7 +110,9 @@ namespace MirioShoto
             var e = new Entrance { name = name, color = color };
             e.inside = inward == Vector3.zero ? edge : edge + inward * 1.2f;
             e.outside = inward == Vector3.zero ? edge : edge - inward * 1f;
-            var m = Art.Prim(PrimitiveType.Cylinder, room, new Vector3(e.inside.x, .015f, e.inside.z), new Vector3(1.6f, .01f, 1.6f), color, default, true);
+            var m = Art.Prim(PrimitiveType.Cylinder, room, new Vector3(e.inside.x, .015f, e.inside.z), new Vector3(2.6f, .01f, 2.6f), color, default, true);
+            var beam = Art.Prim(PrimitiveType.Cylinder, room, new Vector3(e.inside.x, 1.4f, e.inside.z), new Vector3(.12f, 1.4f, .12f), color, default, true);
+            beam.GetComponent<Renderer>().sharedMaterial = Art.Emissive(color, 2.2f);
             m.GetComponent<Renderer>().sharedMaterial = Art.Emissive(color, 0f);
             e.marker = m.GetComponent<Renderer>();
             entrances.Add(e);
@@ -185,7 +187,7 @@ namespace MirioShoto
             foreach (var e in entrances)
             {
                 float k = Mathf.Clamp01(1 - (time - e.lastSpawn) / 1.5f);
-                e.marker.sharedMaterial.SetColor("_EmissionColor", e.color * (.15f + k * 2.5f) * (.8f + .2f * Mathf.Sin(Time.time * 6)));
+                e.marker.sharedMaterial.SetColor("_EmissionColor", e.color * (.55f + k * 2.5f) * (.8f + .2f * Mathf.Sin(Time.time * 4)));
                 if (Random.value < Time.deltaTime * .3f) e.recent = Mathf.Max(0, e.recent - 1);
             }
 
@@ -197,7 +199,7 @@ namespace MirioShoto
 
         void Spawning(float dt)
         {
-            if (!bossSpawned && time >= BossTime) { bossSpawned = true; boss = Spawn(InsectType.BesouroRinoceronte, 1f); Feedback.Text(boss.transform.position, "BESOURO-RINOCERONTE!", new Color(1f, .4f, .3f), 1.8f, 2f); Feedback.Shake(.4f); }
+            if (!bossSpawned && time >= BossTime) { bossSpawned = true; boss = Spawn(InsectType.BarataGigante, 1f); Feedback.Text(boss.transform.position, "BARATA GIGANTE!", new Color(1f, .4f, .3f), 1.8f, 2f); Feedback.Shake(.4f); }
             if (time >= NightDuration) return;
             spawnAcc += (.9f + time / 22f) * dt;
             float hpMult = 1f + time / 150f;
@@ -214,8 +216,8 @@ namespace MirioShoto
             float t = time;
             var pesos = new (InsectType t, float w)[]
             {
-                (InsectType.Formiga, 10f), (InsectType.Pernilongo, t > 30 ? 5f : 0f), (InsectType.Grilo, t > 80 ? 4f : 0f),
-                (InsectType.Barata, t > 140 ? 3f : 0f), (InsectType.Besouro, t > 190 ? 1.5f + (t - 190) / 60f : 0f),
+                (InsectType.Formiga, 10f), (InsectType.Saudva, t > 40 ? 4f : 0f), (InsectType.Pernilongo, t > 30 ? 4f : 0f),
+                (InsectType.Mosca, t > 75 ? 3.5f : 0f), (InsectType.Varejeira, t > 130 ? 2.5f : 0f), (InsectType.Barata, t > 180 ? 2.5f : 0f),
             };
             float total = 0; foreach (var p in pesos) total += p.w;
             float r = Random.value * total;
@@ -226,7 +228,7 @@ namespace MirioShoto
         Insect Spawn(InsectType type, float hpMult)
         {
             // pernilongos só pela janela; demais por qualquer entrada
-            Entrance e = type == InsectType.Pernilongo ? entrances.Find(x => x.name == "Janela") : entrances[Random.Range(0, entrances.Count)];
+            Entrance e = InsectStats.Of(type).flies ? entrances.Find(x => x.name == "Janela") : entrances[Random.Range(0, entrances.Count)];
             e.lastSpawn = time; e.recent++;
             var ins = new GameObject(type.ToString()).AddComponent<Insect>();
             ins.transform.position = e.outside + new Vector3(Random.Range(-.5f, .5f), 0, Random.Range(-.5f, .5f));
@@ -248,8 +250,13 @@ namespace MirioShoto
         void DropXp(Vector3 pos, float value)
         {
             var c = value >= 6 ? new Color(1f, .5f, .9f) : value >= 3 ? new Color(.4f, .9f, 1f) : new Color(.45f, 1f, .45f);
-            var go = Art.Prim(PrimitiveType.Sphere, null, Flat.XZ(pos), Vector3.one * (.16f + .02f * Mathf.Min(value, 10)), c);
-            go.GetComponent<Renderer>().sharedMaterial = Art.Emissive(c, .6f);
+            string nome = value >= 6 ? "petisco_atum" : value >= 3 ? "petisco_sardinha" : "petisco_peixe";
+            var go = new GameObject("Petisco"); go.transform.position = Flat.XZ(pos);
+            if (SpriteActor.Create(go.transform, "Items/" + nome, value >= 6 ? .5f : value >= 3 ? .42f : .34f) == null)
+            {
+                var bola = Art.Prim(PrimitiveType.Sphere, go.transform, Vector3.zero, Vector3.one * (.16f + .02f * Mathf.Min(value, 10)), c);
+                bola.GetComponent<Renderer>().sharedMaterial = Art.Emissive(c, .6f);
+            }
             var p = go.AddComponent<Pickup>(); p.value = value; pickups.Add(p);
         }
 
@@ -307,7 +314,13 @@ namespace MirioShoto
                 GUI.DrawTexture(rc, Texture2D.whiteTexture); GUI.color = new Color(.08f, .08f, .12f, .95f);
                 GUI.DrawTexture(new Rect(rc.x + 4 * s, rc.y + 4 * s, rc.width - 8 * s, rc.height - 8 * s), Texture2D.whiteTexture); GUI.color = c;
                 var tex = Resources.Load<Texture2D>($"Cats/{Names[i]}/front_idle");
-                if (tex != null) GUI.DrawTexture(new Rect(rc.x + 20 * s, rc.y + 16 * s, rc.width - 40 * s, 180 * s), tex, ScaleMode.ScaleToFit);
+                if (tex != null)
+                {
+                    // mesma escala do jogo: o Mirio aparece um pouco maior que a Shoto
+                    CatSprite.Metrics(Names[i], out float ppu, out float pivotY);
+                    float k = 190 * s, wpx = tex.width / ppu * k, hpx = tex.height / ppu * k, baseY = rc.y + 190 * s;
+                    GUI.DrawTexture(new Rect(rc.center.x - wpx / 2, baseY + pivotY * hpx - hpx, wpx, hpx), tex, ScaleMode.StretchToFill);
+                }
                 GUI.Label(new Rect(rc.x, rc.y + 196 * s, rc.width, 40 * s), Names[i], sBig);
                 GUI.Label(new Rect(rc.x + 10 * s, rc.y + 244 * s, rc.width - 20 * s, 130 * s), StatsText(Names[i]), sSmall);
                 if (GUI.Button(rc, GUIContent.none, GUIStyle.none)) { if (selIdx == i) ConfirmSelect(); else selIdx = i; }
@@ -374,7 +387,7 @@ namespace MirioShoto
             {
                 var g = ToGui(e.inside + Vector3.up * .6f, out bool vis); if (!vis) continue;
                 bool ativo = time - e.lastSpawn < 1.5f;
-                Shadowed(new Rect(g.x - 60 * s, g.y - 12 * s, 120 * s, 24 * s), ativo ? $"! {e.name} !" : e.name, ativo ? e.color : new Color(1, 1, 1, .7f), (int)(15 * s));
+                Shadowed(new Rect(g.x - 60 * s, g.y - 12 * s, 120 * s, 24 * s), ativo ? $"! {e.name} !" : e.name, ativo ? e.color : Color.Lerp(Color.white, e.color, .6f), (int)(20 * s));
             }
 
             // barras sobre o gato e o pote
@@ -412,7 +425,7 @@ namespace MirioShoto
                 Shadowed(new Rect(0, 52 * s, Screen.width, 30 * s), "A RAÇÃO ESTÁ SENDO ATACADA!", new Color(1f, .5f, .3f), (int)(20 * s));
 
             if (boss != null)
-                Bar(new Rect(Screen.width / 2 - 250 * s, 48 * s, 500 * s, 16 * s), boss.hp / boss.st.hp, new Color(.6f, .2f, .15f), "Besouro-Rinoceronte");
+                Bar(new Rect(Screen.width / 2 - 250 * s, 48 * s, 500 * s, 16 * s), boss.hp / boss.st.hp, new Color(.6f, .2f, .15f), "Barata Gigante");
 
             if (state == State.Select) DrawSelect(s);
             else if (state == State.LevelUp && offer != null)

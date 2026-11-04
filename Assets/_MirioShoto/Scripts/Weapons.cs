@@ -197,9 +197,9 @@ namespace MirioShoto
     /// <summary>Almofadas: barricadas automáticas nas entradas mais movimentadas (e no pote, a partir do nv 3).</summary>
     public class Almofadas : Weapon
     {
-        public override string Name => "Barricada de Almofadas";
+        public override string Name => "Barricada de Pelúcias";
         float Hp => 40 + 20 * level;
-        public override string Describe(int l) => l == 1 ? "Empurra uma almofada para a entrada mais movimentada. Insetos precisam roê-la para passar." : l == 3 ? "Também protege um lado do pote de ração." : "Almofadas mais resistentes e frequentes.";
+        public override string Describe(int l) => l == 1 ? "Posiciona uma pelúcia na entrada mais movimentada. Insetos precisam roê-la para passar." : l == 3 ? "Também protege um lado do pote de ração." : "Pelúcias mais resistentes e frequentes.";
         public override void Tick(Cat cat, float dt)
         {
             if (!Ready(cat, dt, 13f - level)) return;
