@@ -2,6 +2,8 @@
 
 A top-down isometric (2.5D) survival game, made in Unity. Two cats protect their food bowl from waves of insects that sneak in through the door, window, drain and a crack in the wall.
 
+**▶ Play it on itch.io:** https://zerefwd.itch.io/mirio-shoto-patrulha-do-potinho (Windows)
+
 > **Status:** playable prototype in active development. Core loop, characters and enemy roster are in place; balancing, co-op and settings are on the roadmap.
 
 ## Gameplay
@@ -33,9 +35,14 @@ The code lives under `Assets/_MirioShoto/Scripts` (namespace `MirioShoto`).
 
 ## Run it
 
+**Easiest:** download the Windows build from [itch.io](https://zerefwd.itch.io/mirio-shoto-patrulha-do-potinho), unzip and run `MirioShoto.exe`.
+
+**From source:**
+
 1. Install Unity 6000.3 (via Unity Hub).
 2. Open the project folder in Unity Hub.
 3. Open the main scene and press Play. Move with WASD or the arrow keys; `Tab` returns to character select.
+4. To produce the itch.io zip: **Tools → MirioShoto → Build Windows + Zip**.
 
 ## Roadmap
 
