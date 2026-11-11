@@ -9,14 +9,33 @@ namespace MirioShoto
     /// </summary>
     public static class Art
     {
-        static Shader lit;
+        static Material baseMat;
         static readonly Dictionary<Color, Material> shared = new();
+
+        /// <summary>
+        /// Material-base do pipeline (URP Lit), pego do material padrão de uma primitiva.
+        /// Por que: Shader.Find só acha shaders incluídos no build; o URP Lit é removido do build
+        /// quando nenhum asset o referencia, e o jogo fica rosa. O material padrão do pipeline sempre vai no build.
+        /// </summary>
+        static Material BaseMat()
+        {
+            if (baseMat != null) return baseMat;
+            var tmp = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            tmp.SetActive(false);
+            baseMat = tmp.GetComponent<Renderer>().sharedMaterial;
+            Object.Destroy(tmp);
+            if (baseMat == null)
+            {
+                var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                baseMat = new Material(sh);
+            }
+            return baseMat;
+        }
 
         public static Material Mat(Color c, bool instance = false)
         {
-            if (lit == null) lit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             if (!instance && shared.TryGetValue(c, out var m) && m != null) return m;
-            m = new Material(lit);
+            m = new Material(BaseMat());
             m.SetColor("_BaseColor", c); m.color = c;
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", .15f);
             if (!instance) shared[c] = m;
