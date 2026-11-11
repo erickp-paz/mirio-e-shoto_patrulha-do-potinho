@@ -9,28 +9,24 @@ namespace MirioShoto
     /// </summary>
     public static class Art
     {
-        static Material baseMat;
+        static Material baseMat, emissiveBase;
         static readonly Dictionary<Color, Material> shared = new();
 
         /// <summary>
-        /// Material-base do pipeline (URP Lit), pego do material padrão de uma primitiva.
-        /// Por que: Shader.Find só acha shaders incluídos no build; o URP Lit é removido do build
-        /// quando nenhum asset o referencia, e o jogo fica rosa. O material padrão do pipeline sempre vai no build.
+        /// Materiais-base em Assets/_MirioShoto/Resources, usando o shader URP Lit.
+        /// Por que: o Unity só coloca no build os shaders referenciados por algum asset.
+        /// Criar material só por código (Shader.Find) deixa o URP Lit fora do build e o jogo fica rosa.
+        /// Esses dois .mat garantem o shader no build (o segundo garante também a variante com emissão).
         /// </summary>
-        static Material BaseMat()
+        static Material Load(ref Material cache, string name)
         {
-            if (baseMat != null) return baseMat;
-            var tmp = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            tmp.SetActive(false);
-            baseMat = tmp.GetComponent<Renderer>().sharedMaterial;
-            Object.Destroy(tmp);
-            if (baseMat == null)
-            {
-                var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                baseMat = new Material(sh);
-            }
-            return baseMat;
+            if (cache != null) return cache;
+            cache = Resources.Load<Material>(name);
+            if (cache == null) cache = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            return cache;
         }
+        static Material BaseMat() => Load(ref baseMat, "MirioShoto_BaseLit");
+        static Material EmissiveBase() => Load(ref emissiveBase, "MirioShoto_BaseLitEmissive");
 
         public static Material Mat(Color c, bool instance = false)
         {
@@ -44,7 +40,8 @@ namespace MirioShoto
 
         public static Material Emissive(Color c, float intensity)
         {
-            var m = Mat(c, true);
+            var m = new Material(EmissiveBase());
+            m.SetColor("_BaseColor", c); m.color = c;
             m.EnableKeyword("_EMISSION");
             m.SetColor("_EmissionColor", c * intensity);
             return m;
